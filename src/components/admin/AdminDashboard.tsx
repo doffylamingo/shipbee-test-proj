@@ -2,107 +2,128 @@ import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import TicketSidebar from './TicketSidebar';
 import ConversationPanel from './ConversationPanel';
+import { useTickets } from '@/hooks/useTickets';
+import { useMessages } from '@/hooks/useMessages';
+import { ticketService } from '@/services/ticketService';
+import { messageService } from '@/services/messageService';
+import { uploadService } from '@/services/uploadService';
+import { useRealtimeMessages } from '@/hooks/useRealtime';
 
 export default function AdminDashboard() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  const mockTickets = [
-    {
-      id: '1',
-      subject: 'Issue with shipment tracking',
-      customer_name: 'John Doe',
-      customer_email: 'john@example.com',
-      status: 'open',
-      last_message_at: '2024-01-15T10:30:00',
-      message_count: 5,
-      attachment_count: 2,
-      created_at: '2024-01-15T09:00:00'
-    },
-    {
-      id: '2',
-      subject: 'Question about delivery time',
-      customer_name: 'Jane Smith',
-      customer_email: 'jane@example.com',
-      status: 'pending',
-      last_message_at: '2024-01-14T15:20:00',
-      message_count: 3,
-      attachment_count: 0,
-      created_at: '2024-01-14T14:00:00'
-    },
-    {
-      id: '3',
-      subject: 'Damaged package received',
-      customer_name: 'Bob Wilson',
-      customer_email: 'bob@example.com',
-      status: 'resolved',
-      last_message_at: '2024-01-13T11:45:00',
-      message_count: 8,
-      attachment_count: 3,
-      created_at: '2024-01-12T10:00:00'
-    }
-  ];
+  const { tickets, loading: ticketsLoading, refetch, searchTickets, filterByStatus } = useTickets();
+  
+  const { messages, loading: messagesLoading, refetch: refetchMessages } = useMessages(selectedTicketId);
 
-  const mockMessages = [
-    {
-      id: '1',
-      content: 'Hi, I need help with tracking my shipment',
-      sender_type: 'customer' as const,
-      sender_name: 'John Doe',
-      created_at: '2024-01-15T10:00:00',
-      attachments: []
-    },
-    {
-      id: '2',
-      content: "Hello! I'd be happy to help you with that. Could you provide your tracking number?",
-      sender_type: 'admin' as const,
-      sender_name: 'Support Team',
-      created_at: '2024-01-15T10:05:00',
-      attachments: []
-    },
-    {
-      id: '3',
-      content: "Sure, it's SHIP123456",
-      sender_type: 'customer' as const,
-      sender_name: 'John Doe',
-      created_at: '2024-01-15T10:10:00',
-      attachments: [
-        { id: '1', file_name: 'receipt.pdf', file_url: '#' }
-      ]
-    }
-  ];
+  useRealtimeMessages(selectedTicketId, (newMessage) => {
+    refetchMessages();
+  });
 
   const handleRefresh = () => {
-    console.log('Refreshing tickets...');
+    refetch();
+    if (selectedTicketId) {
+      refetchMessages();
+    }
   };
 
-  const handleStatusChange = (status: string) => {
-    console.log('Changing status to:', status);
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      searchTickets(query);
+    } else {
+      refetch();
+    }
   };
 
-  const handleSendMessage = (message: string, files: File[]) => {
-    console.log('Sending message:', message, 'with files:', files);
+  const handleStatusFilter = (status: string) => {
+    setStatusFilter(status);
+    filterByStatus(status);
   };
 
-  const selectedTicket = mockTickets.find(t => t.id === selectedTicketId);
+  const handleStatusChange = async (status: string) => {
+    if (!selectedTicketId) return;
+    
+    try {
+      await ticketService.updateTicketStatus(
+        selectedTicketId, 
+        status as 'open' | 'pending' | 'resolved' | 'closed'
+      );
+      refetch();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update ticket status');
+    }
+  };
+
+  const handleSendMessage = async (message: string, files: File[]) => {
+    if (!selectedTicketId) return;
+
+    try {
+      let uploadedFiles: Array<{
+        file_name: string;
+        file_url: string;
+        file_type: string;
+        file_size: number;
+      }> = [];
+
+      if (files.length > 0) {
+        uploadedFiles = await uploadService.uploadFiles(files);
+      }
+
+      await messageService.sendMessage({
+        ticketId: selectedTicketId,
+        content: message,
+        senderType: 'admin',
+        senderName: 'Support Team',
+        attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined
+      });
+
+      refetchMessages();
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert('Failed to send message');
+    }
+  };
+
+  const selectedTicket = tickets.find(t => t.id === selectedTicketId);
+
+  if (ticketsLoading && tickets.length === 0) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading tickets...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
       <TicketSidebar
-        tickets={mockTickets}
+        tickets={tickets}
         selectedTicketId={selectedTicketId}
         onSelectTicket={setSelectedTicketId}
         onRefresh={handleRefresh}
+        onSearch={handleSearch}
+        onFilterStatus={handleStatusFilter}
+        searchQuery={searchQuery}
+        statusFilter={statusFilter}
       />
 
-      {selectedTicket ? (
+      {selectedTicket && selectedTicket.id ? (
         <ConversationPanel
           ticketId={selectedTicket.id}
-          subject={selectedTicket.subject}
-          customerName={selectedTicket.customer_name}
-          customerEmail={selectedTicket.customer_email}
-          status={selectedTicket.status}
-          createdAt={selectedTicket.created_at}
-          messages={mockMessages}
+          subject={selectedTicket.subject || 'Untitled'}
+          customerName={selectedTicket.customer_name || 'Unknown'}
+          customerEmail={selectedTicket.customer_email || ''}
+          status={selectedTicket.status || 'open'}
+          createdAt={selectedTicket.created_at || new Date().toISOString()}
+          messages={messages}
+          messagesLoading={messagesLoading}
           onStatusChange={handleStatusChange}
           onSendMessage={handleSendMessage}
         />
@@ -111,6 +132,9 @@ export default function AdminDashboard() {
           <div className="text-center">
             <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-20" />
             <p className="text-lg">Select a ticket to view conversation</p>
+            <p className="text-sm mt-2">
+              {tickets.length === 0 ? 'No tickets yet' : `${tickets.length} ticket${tickets.length === 1 ? '' : 's'} available`}
+            </p>
           </div>
         </div>
       )}

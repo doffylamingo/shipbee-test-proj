@@ -5,19 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import MessageBubble from '../widget/MessageBubble';
 import FileAttachment from '../widget/FileAttachment';
-
-interface Message {
-  id: string;
-  content: string;
-  sender_type: 'customer' | 'admin';
-  sender_name: string;
-  created_at: string;
-  attachments?: Array<{
-    id: string;
-    file_name: string;
-    file_url: string;
-  }>;
-}
+import type { MessageWithAttachments } from '@/lib/supabaseTypes';
 
 interface ConversationPanelProps {
   ticketId: string;
@@ -26,7 +14,8 @@ interface ConversationPanelProps {
   customerEmail: string;
   status: string;
   createdAt: string;
-  messages: Message[];
+  messages: MessageWithAttachments[];
+  messagesLoading?: boolean;
   onStatusChange: (status: string) => void;
   onSendMessage: (message: string, files: File[]) => void;
 }
@@ -39,17 +28,24 @@ export default function ConversationPanel({
   status,
   createdAt,
   messages,
+  messagesLoading = false,
   onStatusChange,
   onSendMessage
 }: ConversationPanelProps) {
   const [newMessage, setNewMessage] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      onSendMessage(newMessage, selectedFiles);
-      setNewMessage('');
-      setSelectedFiles([]);
+  const handleSendMessage = async () => {
+    if (newMessage.trim() || selectedFiles.length > 0) {
+      setIsSending(true);
+      try {
+        await onSendMessage(newMessage, selectedFiles);
+        setNewMessage('');
+        setSelectedFiles([]);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -99,16 +95,27 @@ export default function ConversationPanel({
 
       <ScrollArea className="flex-1 bg-muted/20 h-72">
         <div className="p-6 space-y-4">
-          {messages.map(msg => (
-            <MessageBubble
-              key={msg.id}
-              content={msg.content}
-              senderType={msg.sender_type}
-              senderName={msg.sender_name}
-              createdAt={msg.created_at}
-              attachments={msg.attachments}
-            />
-          ))}
+          {messagesLoading && messages.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+              <p>Loading messages...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No messages yet</p>
+            </div>
+          ) : (
+            messages.map(msg => (
+              <MessageBubble
+                key={msg.id}
+                content={msg.content}
+                senderType={msg.sender_type as 'customer' | 'admin'}
+                senderName={msg.sender_name}
+                createdAt={msg.created_at || ''}
+                attachments={msg.attachments || []}
+              />
+            ))
+          )}
         </div>
       </ScrollArea>
 
@@ -136,7 +143,7 @@ export default function ConversationPanel({
               }}
               className="hidden"
             />
-            <Button variant="outline" size="icon" type="button">
+            <Button variant="outline" size="icon" type="button" disabled={isSending}>
               <Paperclip className="h-4 w-4" />
             </Button>
           </label>
@@ -146,16 +153,21 @@ export default function ConversationPanel({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
+            disabled={isSending}
             className="flex-1 min-h-[80px] max-h-[200px]"
           />
           
           <Button
             onClick={handleSendMessage}
-            disabled={!newMessage.trim()}
+            disabled={(!newMessage.trim() && selectedFiles.length === 0) || isSending}
             size="icon"
             className="self-end"
           >
-            <Send className="h-4 w-4" />
+            {isSending ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div>
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
