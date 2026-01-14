@@ -1,5 +1,9 @@
+import CustomerWidget from '@/components/widget/CustomerWidget';
+
 export default function App() {
   return (
-    <div className="font-bold text-4xl">Hello World</div>
-  )
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <CustomerWidget />
+    </div>
+  );
 }
