@@ -113,6 +113,7 @@ export default function ConversationPanel({
                 senderName={msg.sender_name}
                 createdAt={msg.created_at || ''}
                 attachments={msg.attachments || []}
+                viewMode="admin"
               />
             ))
           )}

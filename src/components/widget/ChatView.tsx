@@ -105,6 +105,7 @@ export default function ChatView ({
               senderName={msg.sender_name}
               createdAt={msg.created_at}
               attachments={msg.attachments}
+              viewMode="customer"
             />
           ))}
           <div ref={messagesEndRef} />

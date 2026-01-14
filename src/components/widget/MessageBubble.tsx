@@ -12,6 +12,7 @@ interface MessageBubbleProps {
   senderName: string;
   createdAt: string;
   attachments?: Attachment[];
+  viewMode?: 'customer' | 'admin';
 }
 
 export default function MessageBubble ({
@@ -19,14 +20,17 @@ export default function MessageBubble ({
   senderType,
   senderName,
   createdAt,
-  attachments = []
+  attachments = [],
+  viewMode = 'customer'
 }: MessageBubbleProps) {
-  const isCustomer = senderType === 'customer';
+  const isMyMessage = viewMode === 'customer' 
+    ? senderType === 'customer' 
+    : senderType === 'admin';
 
   return (
-    <div className={`flex ${isCustomer ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
-        isCustomer
+        isMyMessage
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted'
       }`}>
