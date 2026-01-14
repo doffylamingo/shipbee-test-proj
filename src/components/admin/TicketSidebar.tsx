@@ -76,7 +76,7 @@ export default function TicketSidebar({
         </Select>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-72">
         <div className="p-2 space-y-2">
           {tickets.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
