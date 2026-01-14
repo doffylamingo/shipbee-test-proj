@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   
   const { messages, loading: messagesLoading, refetch: refetchMessages } = useMessages(selectedTicketId);
 
-  useRealtimeMessages(selectedTicketId, (newMessage) => {
+  useRealtimeMessages(selectedTicketId, () => {
     refetchMessages();
   });
 
