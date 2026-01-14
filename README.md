@@ -4,56 +4,50 @@ This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
 
 # Database Schema (ERD)
 
-┌─────────────────────┐
-│ customers │
-├─────────────────────┤
-│ id (PK, UUID) │
-│ name │
-│ email (UNIQUE) │
-│ created_at │
-│ updated_at │
-└──────────┬──────────┘
-│
-│ 1:N
-│
-┌──────────▼──────────┐
-│ tickets │
-├─────────────────────┤
-│ id (PK, UUID) │
-│ customer_id (FK) │
-│ subject │
-│ status │
-│ created_at │
-│ updated_at │
-│ last_message_at │
-└──────────┬──────────┘
-│
-│ 1:N
-│
-┌──────────▼──────────┐
-│ messages │
-├─────────────────────┤
-│ id (PK, UUID) │
-│ ticket_id (FK) │
-│ content │
-│ sender_type │
-│ sender_name │
-│ created_at │
-└──────────┬──────────┘
-│
-│ 1:N
-│
-┌──────────▼──────────┐
-│ attachments │
-├─────────────────────┤
-│ id (PK, UUID) │
-│ message_id (FK) │
-│ file_name │
-│ file_url │
-│ file_type │
-│ file_size │
-│ created_at │
-└─────────────────────┘
+```mermaid
+erDiagram
+    CUSTOMERS {
+        UUID id PK
+        string name
+        string email "UNIQUE"
+        datetime created_at
+        datetime updated_at
+    }
+
+    TICKETS {
+        UUID id PK
+        UUID customer_id FK
+        string subject
+        string status
+        datetime last_message_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    MESSAGES {
+        UUID id PK
+        UUID ticket_id FK
+        string content
+        string sender_type
+        string sender_name
+        datetime created_at
+    }
+
+    ATTACHMENTS {
+        UUID id PK
+        UUID message_id FK
+        string file_name
+        string file_url
+        string file_type
+        int file_size
+        datetime created_at
+    }
+
+    CUSTOMERS ||--o{ TICKETS : has
+    TICKETS   ||--o{ MESSAGES : contains
+    MESSAGES  ||--o{ ATTACHMENTS : includes
+```
+
 
 **Relationships:**
 
